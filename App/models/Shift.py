@@ -6,7 +6,7 @@ class Shift(db.Model):
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
     employee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    #roster_id = db.Column(db.Integer, db.ForeignKey('roster.id'), nullable=True)  # Add this line
+    roster_id = db.Column(db.Integer, db.ForeignKey('roster.id'), nullable=True)  # Add this line
 
     def __init__(self, date, start_time, end_time, employee_id=None):
         self.start_time = start_time
