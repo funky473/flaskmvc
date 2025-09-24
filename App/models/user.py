@@ -3,12 +3,19 @@ from App.database import db
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username =  db.Column(db.String(20), nullable=False, unique=True)
+    type = db.Column(db.String(50))  # Add this line
+    username = db.Column(db.String(20), nullable=False, unique=True)
     password = db.Column(db.String(256), nullable=False)
     first_name = db.Column(db.String(50), nullable=True)
     last_name = db.Column(db.String(50), nullable=True)
+    shifts = db.relationship('Shift', backref='employee', lazy=True)
 
-    def __init__(self, username, password, first_name=None, last_name=None):
+    __mapper_args__ = {
+        'polymorphic_identity': 'user',
+        'polymorphic_on': type
+    }
+
+    def __init__(self, username, password, first_name, last_name):
         self.username = username
         self.set_password(password)
         self.first_name = first_name
