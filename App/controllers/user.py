@@ -9,6 +9,7 @@ def create_user(username, password, first_name, last_name):
 
 def get_user_by_username(username):
     result = db.session.execute(db.select(User).filter_by(username=username))
+
     return result.scalar_one_or_none()
 
 def get_user(id):

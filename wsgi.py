@@ -1,13 +1,16 @@
 import click, pytest, sys
 from flask.cli import with_appcontext, AppGroup
+from datetime import datetime
+from App.controllers.admin import create_admin, get_all_admins,get_admin
+from App.controllers.roster import create_roster,get_all_rosters,get_all_rosters_json
+from App.controllers.shift import create_shift, get_all_shifts, get_all_shifts_json, validate_shift
+from App.controllers import ( create_user, get_all_users_json, get_all_users, initialize, get_user )
 
-from App.controllers.admin import create_admin, get_all_admins
 from App.database import db, get_migrate
 from App.models import User
 from App.models import Admin
 from App.main import create_app
 from App.models.Shift import Shift
-from App.controllers import ( create_user, get_all_users_json, get_all_users, initialize, get_user )
 
 # This commands file allow you to create convenient CLI commands for testing controllers
 
@@ -45,12 +48,48 @@ def create_user_command(username, password, first_name, last_name):
 @user_cli.command("list", help="Lists users in the database")
 @click.argument("format", default="string")
 def list_user_command(format):
+    print('ID : First Name : Last Name')
     if format == 'string':
         users = get_all_users()
         for user in users:
-            print(user.username)
+            print(user.id, user.first_name, user.last_name)
     else:
         print(get_all_users_json())
+
+#clock in command
+@user_cli.command("clockin", help="Clock in a user")
+def clockin_user_command():  # Remove the parameters as we'll use prompts instead
+    print('List of employees:')
+    employees = get_all_users()
+    for emp in employees:
+        print(f'ID: {emp.id}, Name: {emp.first_name} {emp.last_name}')
+    user_id = click.prompt('Enter employee ID to clock in', type=int)
+    user = get_user(user_id)
+    if not user:
+        print(f'User with ID {user_id} not found.')
+        return
+    
+    shifts = [shift for shift in get_all_shifts() if shift.employee_id == user_id]
+    if not shifts:
+        print(f'No shifts found for user ID {user_id}')
+        return
+    
+    for shift in shifts:
+        print(f'Shift ID: {shift.id}, Date: {shift.date}, Start Time: {shift.start_time}, End Time: {shift.end_time}, Employee ID: {shift.employee_id}, Clock In: {shift.clock_in}, Clock Out: {shift.clock_out}')
+    
+    shift_id = click.prompt('Enter Shift ID to clock in', type=int)
+    shift = db.session.get(Shift, shift_id)
+    if not shift or shift.employee_id != user_id:
+        print(f'Shift with ID {shift_id} not found for user ID {user_id}.')
+        return
+
+    clock_in_time = datetime.now().strftime('%H:%M')  # Use current time
+    
+    try:
+        user.clock_in(shift, clock_in_time)
+        print(f'User {user_id} clocked in at {clock_in_time}.')
+    except Exception as e:
+        print(f'Error clocking in: {str(e)}')
 
 app.cli.add_command(user_cli)
 
@@ -66,9 +105,10 @@ def create_admin_command(username, password, first_name, last_name):
 
 @admin_cli.command("list", help="Lists admins in the database")
 def list_admin_command():
+    print('ID : First Name : Last Name')
     admins = get_all_admins()
     for admin in admins:
-        print(admin.username)
+        print(admin.id, admin.first_name, admin.last_name)
 
 app.cli.add_command(admin_cli)
 '''
@@ -97,23 +137,97 @@ shift_cli = AppGroup('shift', help='Shift object commands')
 
 @shift_cli.command("create", help="Creates a shift")
 def create_shift_command():
+    print('Creating a new shift:')
+    print('select an admin to create the shift:')
+    admins = get_all_admins()
+    for admin in admins:
+        print(f'ID: {admin.id}, Name: {admin.first_name} {admin.last_name}')
+    admin_id = click.prompt('Enter admin ID', type=int)
+    admin = get_admin(admin_id)
+    if not admin:
+        print(f'Admin with ID {admin_id} not found.')
+        return
+
     date = click.prompt('Enter date (YYYY-MM-DD)', type=str)
-    start_time = click.prompt('Enter start time (HH:MM:SS)', type=str)
-    end_time = click.prompt('Enter end time (HH:MM:SS)', type=str)
-    if click.confirm('Do you want to assign an employee?'):
-        employee_id = click.prompt('Enter employee ID', type=int)
-    else:
-        employee_id = None
+    start_time = click.prompt('Enter start time (HH:MM)', type=str)
+    end_time = click.prompt('Enter end time (HH:MM)', type=str)
+
+    # Convert string date to Python date object
+    date_obj = datetime.strptime(date, '%Y-%m-%d').date()
     
-    create_shift(date, start_time, end_time, employee_id)
-    print(f'Shift created for {date} from {start_time} to {end_time} for employee {employee_id}')
+    # Keep times as strings since SQLite doesn't support time objects
+    # Just validate the format
+    try:
+        datetime.strptime(start_time, '%H:%M')
+        datetime.strptime(end_time, '%H:%M')
+    except ValueError:
+        print('Invalid time format. Please use HH:MM')
+        return
+
+    print('Please select Roster ID from the following list:')
+    rosters = get_all_rosters()
+    for roster in rosters:
+        print(f'ID: {roster.id}, Start Date: {roster.StartDate}, End Date: {roster.EndDate}')
+    roster_id = click.prompt('Enter Roster ID to assign the shift', type=int)
+    
+    print('List of employees:')
+    employees = get_all_users()
+    for emp in employees:
+        print(f'ID: {emp.id}, Name: {emp.first_name} {emp.last_name}')
+    employee_id = click.prompt('Enter employee ID to assign the shift', type=int)
+
+    # Pass the time values as strings
+    admin.create_shift(date_obj, start_time, end_time, employee_id, roster_id)
+    print(f'Shift created on {date_obj} from {start_time} to {end_time} for employee {employee_id}')
 
 @shift_cli.command("list", help="Lists shifts in the database")
 @click.argument("format", default="string")
 def list_shift_command(format):
     if format == 'string':
-        print(get_all_shifts())
+        for shift in get_all_shifts():
+            employee = get_user(shift.employee_id)
+            employee_name = employee.first_name + ' ' + employee.last_name
+            print(f' Date: {shift.date}, Start Time: {shift.start_time}, End Time: {shift.end_time}, Roster ID: {shift.roster_id}')
+            print(f'  Assigned to Employee ID: {shift.employee_id}, Name: {employee_name}, Clock In: {shift.clock_in}, Clock Out: {shift.clock_out}')
     else:
         print(get_all_shifts_json())
 
 app.cli.add_command(shift_cli)
+
+roster_cli = AppGroup('roster', help='Roster object commands')
+@roster_cli.command("create", help="Creates a roster")
+def create_roster_command():
+    print('Creating a new roster:')
+    print('select an admin to create the roster:')
+    admins = get_all_admins()
+    for admin in admins:
+        print(f'ID: {admin.id}, Name: {admin.first_name} {admin.last_name}')
+    admin_id = click.prompt('Enter admin ID', type=int)
+
+    start_date = click.prompt('Enter start date (YYYY-MM-DD)', type=str)
+    end_date = click.prompt('Enter end date (YYYY-MM-DD)', type=str)
+    
+    # Convert string dates to Python date objects
+    start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+    end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+    
+    #checking to see if there is a shift in the database like this
+    create_roster(admin_id, start_date_obj, end_date_obj)
+    print(f'Roster created from {start_date} to {end_date}')
+
+@roster_cli.command("list", help="Lists rosters in the database")
+@click.argument("format", default="string")
+def list_roster_command(format):
+    if format == 'string':
+        for roster in get_all_rosters():
+            print(f'ID: {roster.id}, Start Date: {roster.StartDate}, End Date: {roster.EndDate}')
+        print("to see all the shift from that roster, enter the roster ID below")
+        roster_id = click.prompt('Enter roster ID', type=int)
+        shifts = [shift for shift in get_all_shifts() if shift.roster_id == roster_id]
+        if not shifts:
+            print(f'No shifts found for roster ID {roster_id}')
+            return
+        for shift in shifts:
+            print(f'Shift ID: {shift.id}, Date: {shift.date}, Start Time: {shift.start_time}, End Time: {shift.end_time}, Employee ID: {shift.employee_id}')
+
+app.cli.add_command(roster_cli)

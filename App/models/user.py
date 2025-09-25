@@ -36,4 +36,8 @@ class User(db.Model):
     def check_password(self, password):
         """Check hashed password."""
         return check_password_hash(self.password, password)
+    
+    def clock_in(shift, clock_in_time):
+        shift.clock_in = clock_in_time
+        db.session.commit()
 

@@ -24,8 +24,8 @@ class Admin(User):
         db.session.commit()
         return new_roster
     
-    def create_shift(self, date, start_time, end_time, employee_id=None):
-        new_shift = Shift(date=date, start_time=start_time, end_time=end_time, employee_id=employee_id)
+    def create_shift(self, date, start_time, end_time, employee_id,roster_id):
+        new_shift = Shift(date=date, start_time=start_time, end_time=end_time, employee_id=employee_id,roster_id=roster_id)
         db.session.add(new_shift)
         db.session.commit()
         return new_shift
