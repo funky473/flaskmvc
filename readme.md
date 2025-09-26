@@ -56,29 +56,67 @@ in configuration information via environment tab of your render project's dashbo
 
 # Flask Commands
 
-wsgi.py is a utility script for performing various tasks related to the project. You can use it to import and test any code in the project. 
-You just need create a manager command function, for example:
+wsgi.py is a utility script for performing various tasks related to the project. Below are all the available commands:
 
-```python
-# inside wsgi.py
-
-user_cli = AppGroup('user', help='User object commands')
-
-@user_cli.cli.command("create-user")
-@click.argument("username")
-@click.argument("password")
-def create_user_command(username, password):
-    create_user(username, password)
-    print(f'{username} created!')
-
-app.cli.add_command(user_cli) # add the group to the cli
-
+## Database Initialization
+```bash
+$ flask init  # Creates and initializes the database with sample data
 ```
 
-Then execute the command invoking with flask cli with command name and the relevant parameters
+This command will initialize the database with sample data including:
+- 5 admin users (admin1 through admin5)
+- 5 regular users (user1 through user5)
+- 2 rosters (current week and next week)
+- 10 shifts distributed across both rosters
 
+Sample account credentials:
+- Admin: username=admin1, password=admin1pass (similar for admin2-admin5)
+- User: username=user1, password=pass1 (similar for user2-user5)
+
+## User Commands
 ```bash
-$ flask user create bob bobpass
+$ flask user create <username> <password> <first_name> <last_name>  # Creates a new user
+$ flask user list [format]  # Lists all users (format: string or json)
+$ flask user clockin  # Clock in a user for their shift
+$ flask user clockout  # Clock out a user from their shift
+$ flask user viewroster  # View roster for a user
+```
+
+## Admin Commands
+```bash
+$ flask admin create <username> <password> <first_name> <last_name>  # Creates a new admin
+$ flask admin list  # Lists all admins
+$ flask admin newroster  # Creates a new roster
+$ flask admin newshift  # Creates a new shift
+$ flask admin viewreport  # View report for a roster
+```
+
+## Shift Commands
+```bash
+$ flask shift list [format]  # Lists all shifts (format: string or json)
+```
+
+## Roster Commands
+```bash
+$ flask roster list [format]  # Lists all rosters and their shifts (format: string)
+```
+
+## Test Commands
+```bash
+$ flask test user [type]  # Run user tests (type: unit, int, or all)
+```
+
+Example usage:
+```bash
+$ flask user create bob bobpass "Bob" "Builder"
+$ flask admin create admin1 admin1pass "Admin" "User"
+$ flask shift list json
+```
+
+For any command, you can use `--help` to get more information about its usage and parameters:
+```bash
+$ flask user --help
+$ flask admin newshift --help
 ```
 
 
@@ -97,12 +135,7 @@ $ gunicorn wsgi:app
 # Deploying
 You can deploy your version of this app to render by clicking on the "Deploy to Render" link above.
 
-# Initializing the Database
-When connecting the project to a fresh empty database ensure the appropriate configuration is set then file then run the following command. This must also be executed once when running the app on heroku by opening the heroku console, executing bash and running the command in the dyno.
 
-```bash
-$ flask init
-```
 
 # Database Migrations
 If changes to the models are made, the database must be'migrated' so that it can be synced with the new models.
