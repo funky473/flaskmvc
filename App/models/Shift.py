@@ -26,5 +26,8 @@ class Shift(db.Model):
             'date': self.date.strftime("%Y-%m-%d"),
             'start_time': self.start_time.strftime("%H:%M:%S"),
             'end_time': self.end_time.strftime("%H:%M:%S"),
+            'roster_id': self.roster_id,
+            'clock_in': self.clock_in,
+            'clock_out': self.clock_out
 
         }

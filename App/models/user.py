@@ -1,5 +1,6 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 from App.database import db
+from App.models.Shift import Shift
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -36,8 +37,6 @@ class User(db.Model):
     def check_password(self, password):
         """Check hashed password."""
         return check_password_hash(self.password, password)
+
     
-    def clock_in(shift, clock_in_time):
-        shift.clock_in = clock_in_time
-        db.session.commit()
 

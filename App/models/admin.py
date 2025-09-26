@@ -18,14 +18,4 @@ class Admin(User):
         base_json = super().get_json()
         return base_json
     
-    def create_roster(self, Start_date, End_date):
-        new_roster = Roster(StartDate=Start_date, EndDate=End_date)
-        db.session.add(new_roster)
-        db.session.commit()
-        return new_roster
     
-    def create_shift(self, date, start_time, end_time, employee_id,roster_id):
-        new_shift = Shift(date=date, start_time=start_time, end_time=end_time, employee_id=employee_id,roster_id=roster_id)
-        db.session.add(new_shift)
-        db.session.commit()
-        return new_shift
